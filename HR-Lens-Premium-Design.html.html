@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR-Lens - HRIS Comparison Tool</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Gradients */
+        .gradient-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .gradient-accent {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .gradient-card {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+        }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(102, 126, 234, 0.6);
+            }
+        }
+        
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .animate-slide-in {
+            animation: slideIn 0.6s ease-out;
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes lineMove {
+            0%, 100% {
+                opacity: 0.8;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        
+        /* Card hover effects */
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+        
+        /* Badge styles */
+        .badge-premium {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .badge-mid {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .badge-budget {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        
+        /* Icon box */
+        .icon-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        function App() {
+            const [selectedSystem, setSelectedSystem] = useState(null);
+            const [compareMode, setCompareMode] = useState(false);
+            const [selectedForCompare, setSelectedForCompare] = useState([]);
+            const [currency, setCurrency] = useState('usd');
+            const [employeeCount, setEmployeeCount] = useState(200);
+            const [filters, setFilters] = useState({
+                companySize: null,
+                geography: null,
+                priority: null,
+                budget: null
+            });
+
+            const systems = [
+                { id: 1, rank: 1, name: 'Workday', tagline: 'Global Enterprise Leader', icon: '🌍', website: 'https://www.workday.com', scalability: 9, pricing: { min: 12, max: 25 }, budgetTier: '$$$', features: ['Global payroll in 190+ countries', 'Advanced financial management', 'Real-time analytics', 'Multi-currency support', 'Talent management suite'], usp: 'Gold standard for large enterprises', setupTime: '6-12 months', bestFor: 'Tech companies, financial services with 5,000+ employees', region: 'Global', tags: { size: ['enterprise'], geography: ['global'], priority: ['compliance'], budget: ['premium'] } },
+                { id: 2, rank: 2, name: 'HiBob', tagline: 'Culture & Experience First', icon: '😊', website: 'https://www.hibob.com', scalability: 8, pricing: { min: 8, max: 15 }, budgetTier: '$$', features: ['Employee engagement tools', 'Modern user interface', 'Org charts', 'Performance reviews', 'Social features'], usp: 'Makes HR feel human with beautiful design', setupTime: '2-4 weeks', bestFor: 'Growth-stage startups (100-1000 employees)', region: 'Global', tags: { size: ['smb', 'mid-market'], geography: ['global'], priority: ['culture'], budget: ['mid-range'] } },
+                { id: 3, rank: 3, name: 'Rippling', tagline: 'HR + IT Unified', icon: '⚙️', website: 'https://www.rippling.com', scalability: 8, pricing: { min: 10, max: 20 }, budgetTier: '$$', features: ['HR + IT provisioning', 'Auto app provisioning', 'Device management', 'Centralized directory', 'Workflow automation'], usp: 'First platform to unite HR and IT', setupTime: '3-8 weeks', bestFor: 'Tech-forward companies (200-3000 employees)', region: 'Global', tags: { size: ['smb', 'mid-market'], geography: ['north-america'], priority: ['automation'], budget: ['mid-range'] } },
+                { id: 4, rank: 4, name: 'Deel', tagline: 'Global Hiring Simplified', icon: '🚀', website: 'https://www.deel.com', scalability: 9, pricing: { min: 15, max: 50 }, budgetTier: '$$$', features: ['EOR in 150+ countries', 'Global payroll', 'Tax compliance', 'Currency conversion', 'Local expertise'], usp: 'Simplifies global hiring and compliance', setupTime: '1-3 weeks per country', bestFor: 'Remote-first companies hiring globally', region: 'Global', tags: { size: ['smb', 'mid-market'], geography: ['global'], priority: ['compliance'], budget: ['premium'] } },
+                { id: 5, rank: 5, name: 'Sympa', tagline: 'European Excellence', icon: '🇪🇺', website: 'https://www.sympa.com', scalability: 7, pricing: { min: 7, max: 12 }, budgetTier: '$$', features: ['Built for European HR practices', 'GDPR and labor law compliance', 'Multi-country payroll (EU)', 'Benefits and compensation', 'Employee self-service'], usp: 'Purpose-built for European companies', setupTime: '4-8 weeks', bestFor: 'European mid-market (200-2000 employees)', region: 'Europe', tags: { size: ['mid-market'], geography: ['europe'], priority: ['compliance'], budget: ['mid-range'] } },
+                { id: 6, rank: 6, name: 'BambooHR', tagline: 'Simple & Affordable', icon: '💚', website: 'https://www.bamboohr.com', scalability: 6, pricing: { min: 6, max: 12 }, budgetTier: '$', features: ['Simple employee profiles', 'Time tracking', 'Payroll integration', 'Performance reviews', 'Mobile app'], usp: 'Affordable and easy to implement', setupTime: '1-2 weeks', bestFor: 'Small businesses (20-300 employees)', region: 'Global', tags: { size: ['smb'], geography: ['north-america'], priority: ['affordability'], budget: ['budget-friendly'] } },
+                { id: 7, rank: 7, name: 'Personio', tagline: 'European Growth Platform', icon: '📈', website: 'https://www.personio.com', scalability: 7, pricing: { min: 8, max: 14 }, budgetTier: '$$', features: ['Modern mobile app', 'Multi-country payroll (EU)', 'ATS integrated', 'Learning management', 'Self-service portal'], usp: 'Complete HR operating system for Europe', setupTime: '3-6 weeks', bestFor: 'European scale-ups (100-1500 employees)', region: 'Europe', tags: { size: ['smb', 'mid-market'], geography: ['europe'], priority: ['all-in-one'], budget: ['mid-range'] } },
+                { id: 8, rank: 8, name: 'Gusto', tagline: 'Payroll Made Easy', icon: '💰', website: 'https://www.gusto.com', scalability: 5, pricing: { min: 6, max: 12 }, budgetTier: '$', features: ['Simple payroll', 'Benefits administration', 'Tax compliance', 'Automated deposits', 'Mobile stubs'], usp: 'Makes payroll simple and transparent', setupTime: '1 week', bestFor: 'US small businesses (under 100 employees)', region: 'North America', tags: { size: ['smb'], geography: ['north-america'], priority: ['payroll'], budget: ['budget-friendly'] } },
+                { id: 9, rank: 9, name: 'ADP Workforce Now', tagline: 'Enterprise Payroll', icon: '🏢', website: 'https://www.adp.com', scalability: 8, pricing: { min: 10, max: 20 }, budgetTier: '$$', features: ['Enterprise payroll', 'Global payroll', 'Time and labor', 'Tax automation', 'Talent management'], usp: 'Trusted payroll backbone for scaling', setupTime: '4-10 weeks', bestFor: 'Mid-market to enterprise (500-10,000+ employees)', region: 'Global', tags: { size: ['mid-market', 'enterprise'], geography: ['global'], priority: ['payroll'], budget: ['mid-range'] } },
+                { id: 10, rank: 10, name: 'Paylocity', tagline: 'Modern Engagement', icon: '👥', website: 'https://www.paylocity.com', scalability: 7, pricing: { min: 9, max: 18 }, budgetTier: '$$', features: ['Employee engagement', 'Payroll management', 'Time tracking', 'Benefits admin', 'Performance goals'], usp: 'Payroll with human touch', setupTime: '3-6 weeks', bestFor: 'Mid-market (200-5000 employees)', region: 'Global', tags: { size: ['smb', 'mid-market'], geography: ['north-america'], priority: ['engagement'], budget: ['mid-range'] } },
+                { id: 11, rank: 11, name: 'Factorial', tagline: 'European SMB Champion', icon: '⭐', website: 'https://www.factorial.io', scalability: 7, pricing: { min: 5, max: 11 }, budgetTier: '$', features: ['GDPR compliance built-in', 'Digital document storage', 'Leave management', 'Performance reviews', 'Multi-language support'], usp: 'Affordable, modern HRIS for Europe', setupTime: '2-3 weeks', bestFor: 'European SMBs (20-500 employees)', region: 'Europe', tags: { size: ['smb'], geography: ['europe'], priority: ['affordability'], budget: ['budget-friendly'] } },
+                { id: 12, rank: 12, name: 'Paychex Flex', tagline: 'Mid-Market Payroll', icon: '📊', website: 'https://www.paychex.com', scalability: 7, pricing: { min: 8, max: 16 }, budgetTier: '$$', features: ['Integrated payroll and HR', 'Tax compliance', 'Workers compensation', 'Time and labor', 'Benefits admin'], usp: 'Trusted payroll provider with HR', setupTime: '4-8 weeks', bestFor: 'US mid-market (100-2000 employees)', region: 'North America', tags: { size: ['mid-market'], geography: ['north-america'], priority: ['payroll'], budget: ['mid-range'] } },
+                { id: 13, rank: 13, name: 'Zenefits', tagline: 'All-In-One Platform', icon: '🎯', website: 'https://www.zenefits.com', scalability: 6, pricing: { min: 8, max: 14 }, budgetTier: '$$', features: ['HR, benefits, and payroll', 'Benefits marketplace', 'Compliance documents', 'Employee self-service', 'Workers compensation'], usp: 'All-in-one platform for SMBs', setupTime: '2-3 weeks', bestFor: 'US small businesses (10-300 employees)', region: 'North America', tags: { size: ['smb'], geography: ['north-america'], priority: ['all-in-one'], budget: ['mid-range'] } },
+                { id: 14, rank: 14, name: 'Namely', tagline: 'Culture-Centric HR', icon: '🎨', website: 'https://www.namely.com', scalability: 7, pricing: { min: 10, max: 18 }, budgetTier: '$$', features: ['Beautiful modern interface', 'Payroll and compliance', 'Learning and development', 'Performance management', 'Analytics'], usp: 'Puts culture and UX at center', setupTime: '3-6 weeks', bestFor: 'Mid-market (300-2000 employees)', region: 'Global', tags: { size: ['mid-market'], geography: ['north-america', 'europe'], priority: ['culture'], budget: ['mid-range'] } },
+                { id: 15, rank: 15, name: 'Breathe', tagline: 'UK & EU Compliance', icon: '✅', website: 'https://www.breathehr.com', scalability: 6, pricing: { min: 6, max: 11 }, budgetTier: '$', features: ['UK and EU law built-in', 'Cloud-based records', 'Leave management', 'Absence tracking', 'Email alerts'], usp: 'Designed for UK and EU compliance', setupTime: '2-4 weeks', bestFor: 'UK and European SMBs (10-500 employees)', region: 'Europe', tags: { size: ['smb'], geography: ['europe'], priority: ['compliance'], budget: ['budget-friendly'] } },
+                { id: 16, rank: 16, name: 'Sage People', tagline: 'HR Transformation', icon: '🔄', website: 'https://www.sage.com', scalability: 8, pricing: { min: 9, max: 17 }, budgetTier: '$$', features: ['HR transformation platform', 'Talent management', 'Learning and development', 'Payroll integration', 'Analytics'], usp: 'Enterprise-grade HR platform for Europe', setupTime: '8-12 weeks', bestFor: 'European mid-market (500-5000 employees)', region: 'Europe', tags: { size: ['mid-market', 'enterprise'], geography: ['europe'], priority: ['transformation'], budget: ['mid-range'] } },
+                { id: 17, rank: 17, name: 'Orion Talent', tagline: 'DACH Region Expert', icon: '🇩🇪', website: 'https://www.oriontaas.com', scalability: 7, pricing: { min: 6, max: 13 }, budgetTier: '$$', features: ['German, Austrian, Swiss law', 'GDPR and data protection', 'Multi-currency support', 'Mobile HR app', 'Local payroll integration'], usp: 'Purpose-built for DACH region', setupTime: '4-6 weeks', bestFor: 'DACH region (100-1500 employees)', region: 'Europe', tags: { size: ['mid-market'], geography: ['europe'], priority: ['compliance'], budget: ['mid-range'] } },
+                { id: 18, rank: 18, name: 'TriNet', tagline: 'Enterprise HR Suite', icon: '🎖️', website: 'https://www.trinet.com', scalability: 8, pricing: { min: 11, max: 22 }, budgetTier: '$$$', features: ['End-to-end HR and payroll', 'Time and labor', 'Benefits administration', 'Compliance and tax', 'Strategic HR insights'], usp: 'Full-service HR with payroll built-in', setupTime: '6-10 weeks', bestFor: 'US mid-market (500-5000 employees)', region: 'North America', tags: { size: ['mid-market', 'enterprise'], geography: ['north-america'], priority: ['compliance'], budget: ['premium'] } },
+                { id: 19, rank: 19, name: 'Benefitfocus', tagline: 'Benefits & Wellness', icon: '❤️', website: 'https://www.benefitfocus.com', scalability: 8, pricing: { min: 8, max: 16 }, budgetTier: '$$', features: ['Benefits administration', 'Open enrollment automation', 'Compliance management', 'Health and wellness', 'Analytics'], usp: 'Specializes in benefits with health', setupTime: '6-8 weeks', bestFor: 'Mid-market and enterprise (500+ employees)', region: 'Global', tags: { size: ['mid-market', 'enterprise'], geography: ['north-america'], priority: ['benefits'], budget: ['mid-range'] } },
+                { id: 20, rank: 20, name: 'Successfactors', tagline: 'Enterprise Talent AI', icon: '🤖', website: 'https://www.sap.com/products/hcm/successfactors.html', scalability: 9, pricing: { min: 15, max: 35 }, budgetTier: '$$$', features: ['Talent management suite', 'Succession planning', 'Performance management', 'Learning management', 'Advanced analytics and AI'], usp: 'Industry-leading enterprise platform', setupTime: '8-16 weeks', bestFor: 'Large enterprises (5,000+ employees)', region: 'Global', tags: { size: ['enterprise'], geography: ['global'], priority: ['talent-management'], budget: ['premium'] } }
+            ];
+
+            const convertPrice = (usdPrice) => {
+                if (currency === 'eur') return Math.round(usdPrice * 0.92 * 100) / 100;
+                if (currency === 'gbp') return Math.round(usdPrice * 0.79 * 100) / 100;
+                return usdPrice;
+            };
+
+            const currencySymbol = currency === 'usd' ? '$' : currency === 'eur' ? '€' : '£';
+
+            const budgetColors = {
+                '$': 'badge-budget',
+                '$$': 'badge-mid',
+                '$$$': 'badge-premium'
+            };
+
+            const filteredSystems = useMemo(() => {
+                return systems.filter((sys) => {
+                    if (filters.companySize && !sys.tags.size.includes(filters.companySize)) return false;
+                    if (filters.geography && !sys.tags.geography.includes(filters.geography)) return false;
+                    if (filters.priority && !sys.tags.priority.includes(filters.priority)) return false;
+                    if (filters.budget && !sys.tags.budget.includes(filters.budget)) return false;
+                    return true;
+                });
+            }, [filters]);
+
+            const calculateCost = (system) => {
+                const minCost = system.pricing.min * employeeCount;
+                const maxCost = system.pricing.max * employeeCount;
+                return {
+                    min: Math.round(minCost * 100) / 100,
+                    max: Math.round(maxCost * 100) / 100
+                };
+            };
+
+            return (
+                <div className="w-full min-h-screen">
+                    {/* Hero Section */}
+                    <div className="relative overflow-hidden h-auto min-h-96">
+                        {/* Animated Grid Background */}
+                        <div 
+                            className="absolute inset-0 opacity-10"
+                            style={{
+                                backgroundImage: `
+                                    linear-gradient(0deg, transparent 24%, rgba(102, 126, 234, 0.05) 25%, rgba(102, 126, 234, 0.05) 26%, transparent 27%, transparent 74%, rgba(102, 126, 234, 0.05) 75%, rgba(102, 126, 234, 0.05) 76%, transparent 77%, transparent),
+                                    linear-gradient(90deg, transparent 24%, rgba(102, 126, 234, 0.05) 25%, rgba(102, 126, 234, 0.05) 26%, transparent 27%, transparent 74%, rgba(102, 126, 234, 0.05) 75%, rgba(102, 126, 234, 0.05) 76%, transparent 77%, transparent)
+                                `,
+                                backgroundSize: '60px 60px'
+                            }}
+                        ></div>
+
+                        {/* Neon Graph SVG */}
+                        <svg 
+                            className="absolute inset-0 w-full h-full"
+                            style={{
+                                pointerEvents: 'none'
+                            }}
+                            viewBox="0 0 1200 400"
+                            preserveAspectRatio="xMidYMid slice"
+                        >
+                            <defs>
+                                <linearGradient id="neon-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#00ff00" stopOpacity="0.1" />
+                                    <stop offset="50%" stopColor="#00ff00" stopOpacity="0.9" />
+                                    <stop offset="100%" stopColor="#00ff00" stopOpacity="0.2" />
+                                </linearGradient>
+                                <filter id="neon-glow">
+                                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                    <feMerge>
+                                        <feMergeNode in="coloredBlur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                            </defs>
+                            
+                            {/* Grid lines - very subtle */}
+                            <g opacity="0.03" stroke="#667eea" strokeWidth="1">
+                                <line x1="0" y1="80" x2="1200" y2="80" />
+                                <line x1="0" y1="160" x2="1200" y2="160" />
+                                <line x1="0" y1="240" x2="1200" y2="240" />
+                                <line x1="0" y1="320" x2="1200" y2="320" />
+                                <line x1="150" y1="0" x2="150" y2="400" />
+                                <line x1="300" y1="0" x2="300" y2="400" />
+                                <line x1="450" y1="0" x2="450" y2="400" />
+                                <line x1="600" y1="0" x2="600" y2="400" />
+                                <line x1="750" y1="0" x2="750" y2="400" />
+                                <line x1="900" y1="0" x2="900" y2="400" />
+                                <line x1="1050" y1="0" x2="1050" y2="400" />
+                            </g>
+
+                            {/* Smooth upward trending line */}
+                            <path
+                                d="M -50 380 Q 150 340 300 300 T 600 220 T 900 120 T 1200 40"
+                                fill="none"
+                                stroke="url(#neon-gradient)"
+                                strokeWidth="4"
+                                opacity="0.9"
+                                filter="url(#neon-glow)"
+                                style={{
+                                    animation: 'slideRight 6s ease-in-out infinite',
+                                    strokeLinecap: 'round',
+                                    strokeLinejoin: 'round'
+                                }}
+                            />
+                            
+                            {/* Glow effect layer */}
+                            <path
+                                d="M -50 380 Q 150 340 300 300 T 600 220 T 900 120 T 1200 40"
+                                fill="none"
+                                stroke="#00ff00"
+                                strokeWidth="2"
+                                opacity="0.4"
+                                style={{
+                                    animation: 'slideRight 6s ease-in-out infinite',
+                                    filter: 'drop-shadow(0 0 15px #00ff00)',
+                                    strokeLinecap: 'round'
+                                }}
+                            />
+
+                            {/* Animated dot following the line */}
+                            <g style={{animation: 'slideRight 6s ease-in-out infinite'}}>
+                                <circle cx="300" cy="300" r="8" fill="#00ff00" opacity="0.8"/>
+                                <circle cx="300" cy="300" r="12" fill="#00ff00" opacity="0.3" style={{animation: 'pulse 2s ease-in-out infinite'}}/>
+                            </g>
+                        </svg>
+
+                        <style>{`
+                            @keyframes slideRight {
+                                0% {
+                                    transform: translateX(-200px);
+                                }
+                                100% {
+                                    transform: translateX(0px);
+                                }
+                            }
+                        `}</style>
+
+                        {/* Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 blur-3xl"></div>
+
+                        {/* Content */}
+                        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 z-10">
+                            <div className="text-center animate-fade-in-up">
+                                <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6">
+                                    <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">HR-Lens</span>
+                                </h1>
+                                <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">Compare 20 HRIS systems side-by-side with real-time pricing in your currency</p>
+                                <div className="flex gap-4 justify-center flex-wrap">
+                                    <div className="flex items-center gap-2 text-gray-300">
+                                        <span className="text-2xl">📊</span>
+                                        <span>20 Systems</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-300">
+                                        <span className="text-2xl">💱</span>
+                                        <span>3 Currencies</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-300">
+                                        <span className="text-2xl">🎯</span>
+                                        <span>Smart Filters</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {/* Controls */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                            {/* Currency Selector */}
+                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                                <label className="block text-sm font-semibold text-gray-200 mb-3">💱 Currency</label>
+                                <div className="flex gap-2">
+                                    {['usd', 'eur', 'gbp'].map(c => (
+                                        <button
+                                            key={c}
+                                            onClick={() => setCurrency(c)}
+                                            className={`flex-1 py-2 rounded-lg font-600 transition-all ${
+                                                currency === c
+                                                    ? 'gradient-primary text-white shadow-lg'
+                                                    : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                                            }`}
+                                        >
+                                            {c === 'usd' ? 'USD' : c === 'eur' ? 'EUR' : 'GBP'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Employee Count */}
+                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                                <label className="block text-sm font-semibold text-gray-200 mb-3">👥 Team Size: <span className="gradient-primary bg-clip-text text-transparent">{employeeCount.toLocaleString()}</span></label>
+                                <input
+                                    type="range"
+                                    min="10"
+                                    max="10000"
+                                    step="10"
+                                    value={employeeCount}
+                                    onChange={e => setEmployeeCount(parseInt(e.target.value))}
+                                    className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                                <label className="text-xs font-bold text-purple-300 uppercase block mb-2">🌍 Region</label>
+                                <select
+                                    value={filters.geography || ''}
+                                    onChange={e => setFilters({ ...filters, geography: e.target.value || null })}
+                                    className="w-full px-3 py-2 rounded-lg bg-white/5 text-white text-sm border border-white/10 focus:border-purple-500 focus:outline-none"
+                                >
+                                    <option value="">All Regions</option>
+                                    <option value="global">Global</option>
+                                    <option value="north-america">N. America</option>
+                                    <option value="europe">Europe</option>
+                                </select>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                                <label className="text-xs font-bold text-purple-300 uppercase block mb-2">📈 Company Size</label>
+                                <select
+                                    value={filters.companySize || ''}
+                                    onChange={e => setFilters({ ...filters, companySize: e.target.value || null })}
+                                    className="w-full px-3 py-2 rounded-lg bg-white/5 text-white text-sm border border-white/10 focus:border-purple-500 focus:outline-none"
+                                >
+                                    <option value="">All Sizes</option>
+                                    <option value="smb">SMB</option>
+                                    <option value="mid-market">Mid-Market</option>
+                                    <option value="enterprise">Enterprise</option>
+                                </select>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                                <label className="text-xs font-bold text-purple-300 uppercase block mb-2">🎯 Priority</label>
+                                <select
+                                    value={filters.priority || ''}
+                                    onChange={e => setFilters({ ...filters, priority: e.target.value || null })}
+                                    className="w-full px-3 py-2 rounded-lg bg-white/5 text-white text-sm border border-white/10 focus:border-purple-500 focus:outline-none"
+                                >
+                                    <option value="">All Priorities</option>
+                                    <option value="compliance">Compliance</option>
+                                    <option value="culture">Culture</option>
+                                    <option value="automation">Automation</option>
+                                </select>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                                <label className="text-xs font-bold text-purple-300 uppercase block mb-2">💰 Budget</label>
+                                <select
+                                    value={filters.budget || ''}
+                                    onChange={e => setFilters({ ...filters, budget: e.target.value || null })}
+                                    className="w-full px-3 py-2 rounded-lg bg-white/5 text-white text-sm border border-white/10 focus:border-purple-500 focus:outline-none"
+                                >
+                                    <option value="">All Budgets</option>
+                                    <option value="budget-friendly">Budget</option>
+                                    <option value="mid-range">Mid-Range</option>
+                                    <option value="premium">Premium</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Selected for Compare */}
+                        {selectedForCompare.length > 0 && (
+                            <div className="gradient-primary rounded-xl p-6 mb-8 text-white shadow-lg animate-fade-in-up">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-3xl">🔍</span>
+                                        <div>
+                                            <p className="font-bold text-lg">Comparison Ready</p>
+                                            <p className="text-purple-200">You have selected {selectedForCompare.length} system{selectedForCompare.length > 1 ? 's' : ''}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setCompareMode(true)}
+                                        className="px-6 py-3 bg-white text-purple-600 font-bold rounded-lg hover:bg-purple-50 transition-all"
+                                    >
+                                        View Comparison
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Results Count */}
+                        <div className="text-gray-300 mb-4 font-semibold">
+                            Showing <span className="text-purple-400">{filteredSystems.length}</span> of <span className="text-purple-400">{systems.length}</span> systems
+                        </div>
+
+                        {/* Systems Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                            {filteredSystems.map((sys, idx) => (
+                                <div
+                                    key={sys.id}
+                                    onClick={() => setSelectedSystem(sys)}
+                                    className={`card-hover cursor-pointer rounded-xl border backdrop-blur-md transition-all p-6 ${
+                                        selectedSystem?.id === sys.id
+                                            ? 'border-purple-500 bg-purple-500/20 shadow-lg'
+                                            : 'border-white/20 bg-white/10 hover:border-purple-400/50'
+                                    }`}
+                                    style={{ animationDelay: `${idx * 50}ms` }}
+                                >
+                                    <div className="flex items-start gap-4 mb-4">
+                                        <div className={`icon-box text-3xl`} style={{ background: 'rgba(168, 85, 247, 0.2)' }}>
+                                            {sys.icon}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="inline-block px-2 py-1 rounded text-xs font-bold text-purple-300 bg-purple-500/30">#{sys.rank}</span>
+                                                <span className="text-xs text-gray-400">{sys.region}</span>
+                                            </div>
+                                            <h3 className="text-xl font-bold text-white">{sys.name}</h3>
+                                            <p className="text-sm text-gray-300">{sys.tagline}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2 flex-wrap mb-4">
+                                        <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full text-white ${budgetColors[sys.budgetTier]}`}>
+                                            {sys.budgetTier}
+                                        </span>
+                                        <span className="inline-block px-3 py-1 text-xs font-bold rounded-full bg-blue-500/30 text-blue-200">
+                                            {currencySymbol}{convertPrice(sys.pricing.min)}-{currencySymbol}{convertPrice(sys.pricing.max)}
+                                        </span>
+                                        <span className="inline-block px-3 py-1 text-xs font-bold rounded-full bg-yellow-500/30 text-yellow-200">
+                                            {sys.scalability}/10
+                                        </span>
+                                    </div>
+
+                                    {selectedSystem?.id === sys.id && (
+                                        <div className="mt-4 pt-4 border-t border-white/10 space-y-3 animate-fade-in-up">
+                                            <div className="gradient-accent rounded-lg p-3 text-white">
+                                                <p className="text-xs font-bold opacity-90">MONTHLY COST ({employeeCount.toLocaleString()} employees)</p>
+                                                <p className="text-2xl font-bold mt-1">
+                                                    {currencySymbol}{convertPrice(calculateCost(sys).min).toLocaleString()} - {currencySymbol}{convertPrice(calculateCost(sys).max).toLocaleString()}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-purple-300 mb-2">✨ Why Choose {sys.name}?</p>
+                                                <p className="text-sm text-gray-300">{sys.usp}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (!selectedForCompare.find(s => s.id === sys.id)) {
+                                                            setSelectedForCompare([...selectedForCompare, sys]);
+                                                        }
+                                                    }}
+                                                    className="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg transition"
+                                                >
+                                                    ➕ Add to Compare
+                                                </button>
+                                                <a
+                                                    href={sys.website}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex-1 px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-xs font-bold rounded-lg transition text-center"
+                                                >
+                                                    🌐 Visit
+                                                </a>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Comparison Modal */}
+                    {compareMode && selectedForCompare.length > 0 && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                            <div className="bg-gray-900 rounded-2xl max-w-6xl w-full max-h-96 overflow-y-auto border border-purple-500/30 shadow-2xl">
+                                <div className="sticky top-0 gradient-primary px-6 py-4 flex justify-between items-center text-white">
+                                    <h2 className="text-2xl font-bold">Comparing {selectedForCompare.length} Systems</h2>
+                                    <button
+                                        onClick={() => setCompareMode(false)}
+                                        className="text-2xl hover:opacity-80"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                <div className="p-6">
+                                    <div className="overflow-x-auto mb-6">
+                                        <table className="w-full text-sm text-gray-300">
+                                            <thead>
+                                                <tr className="border-b border-purple-500/30">
+                                                    <th className="text-left py-3 px-4 font-bold text-purple-400">Feature</th>
+                                                    {selectedForCompare.map(s => (
+                                                        <th key={s.id} className="text-left py-3 px-4 font-bold text-purple-400 min-w-48">
+                                                            <div className="text-lg mb-1">{s.icon}</div>
+                                                            <div className="font-bold text-white">{s.name}</div>
+                                                            <div className="text-xs">{s.region}</div>
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr className="border-b border-purple-500/30">
+                                                    <td className="py-3 px-4 font-bold text-purple-300">Budget</td>
+                                                    {selectedForCompare.map(s => (
+                                                        <td key={s.id} className="py-3 px-4">
+                                                            <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full text-white ${budgetColors[s.budgetTier]}`}>
+                                                                {s.budgetTier}
+                                                            </span>
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                                <tr className="border-b border-purple-500/30">
+                                                    <td className="py-3 px-4 font-bold text-purple-300">Cost ({employeeCount.toLocaleString()} emp)</td>
+                                                    {selectedForCompare.map(s => {
+                                                        const cost = calculateCost(s);
+                                                        return (
+                                                            <td key={s.id} className="py-3 px-4">
+                                                                <span className="font-bold text-cyan-400">
+                                                                    {currencySymbol}{convertPrice(cost.min).toLocaleString()} - {currencySymbol}{convertPrice(cost.max).toLocaleString()}
+                                                                </span>
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                                <tr className="border-b border-purple-500/30">
+                                                    <td className="py-3 px-4 font-bold text-purple-300">Scalability</td>
+                                                    {selectedForCompare.map(s => (
+                                                        <td key={s.id} className="py-3 px-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                                                    <div className="h-full gradient-primary" style={{ width: `${(s.scalability / 10) * 100}%` }}></div>
+                                                                </div>
+                                                                <span className="font-bold text-purple-300">{s.scalability}/10</span>
+                                                            </div>
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                                <tr>
+                                                    <td className="py-3 px-4 font-bold text-purple-300">Setup Time</td>
+                                                    {selectedForCompare.map(s => (
+                                                        <td key={s.id} className="py-3 px-4 text-gray-300">{s.setupTime}</td>
+                                                    ))}
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div className="flex gap-3 flex-wrap">
+                                        <button
+                                            onClick={() => {
+                                                setCompareMode(false);
+                                                setSelectedForCompare([]);
+                                            }}
+                                            className="flex-1 px-4 py-2 border border-purple-500/50 text-purple-300 font-bold rounded-lg hover:bg-purple-500/10 transition"
+                                        >
+                                            Close
+                                        </button>
+                                        {selectedForCompare.map(s => (
+                                            <a
+                                                key={s.id}
+                                                href={s.website}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex-1 px-4 py-2 gradient-primary text-white font-bold rounded-lg hover:shadow-lg transition text-center"
+                                            >
+                                                Visit {s.name} →
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
